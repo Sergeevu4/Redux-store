@@ -42,9 +42,27 @@ import ErrorIndicator from '../error-indicator';
         которая получит обернутый компонент connect(mapStateToProps, mapDispatchToProps)
         тем самым внутри mapStateToProps, mapDispatchToProps можно получить те props
         которые мы передали из withBookstoreService
+
+    # Component Container - Паттерн React-Redux - разделения логики и орисовки
+      Можно вынести все контейнеры в отдельную папку containers или PersonContainer и там держать все компоненты контайнеры
+      Компоненты-контайнеры работают с Redux, реализуют loading, error, другую Логику
 */
 
-class BookList extends Component {
+// # (Презентационный) Компонент отвечает за отображение элементов - (ничего не знает Логике)
+const Booklist = ({ books }) => {
+  return (
+    <ul className='book-list'>
+      {books.map((book) => (
+        <li key={book.id}>
+          <BookListItem book={book} />
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+// # Компонент Контейнер - отвечает за Логику, но не за отображения
+class BookListContainer extends Component {
   componentDidMount() {
     this.props.fetchBooks();
   }
@@ -63,15 +81,7 @@ class BookList extends Component {
       return <ErrorIndicator />;
     }
 
-    return (
-      <ul className='book-list'>
-        {books.map((book) => (
-          <li key={book.id}>
-            <BookListItem book={book} />
-          </li>
-        ))}
-      </ul>
-    );
+    return <Booklist books={books} />;
   }
 }
 
@@ -92,16 +102,16 @@ const mapDispatchToProps = (dispatch, ownProps) => {
   };
 };
 
-// Возвращает обернутый HOC компонент который получает доступ к Класс-Сервису
+// Возвращает обернутый HOC компонент получает доступ к Класс-Сервису
 // И через connect умеет брать данные из Redux и так же через Actions их изменять
 export default compose(
   withBookstoreService(),
   connect(mapStateToProps, mapDispatchToProps)
-)(BookList);
+)(BookListContainer);
 
 /*
   // ES5
-  // state - который определен в Reducer
+  // state - определен в Reducer
   const mapStateToProps = (state) => {
     return {
       books: state.books,
