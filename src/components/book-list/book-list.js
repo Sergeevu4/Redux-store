@@ -35,25 +35,18 @@ import ErrorIndicator from '../error-indicator';
 
       Если вы передаете единственную функцию (один action creator),
       возвращаемое значение также будет единственной функцией которая обернута и вызвана в dispatch
+
+    # mapStateToProps и mapDispatchToProps есть вторгой аргумент: ownProps
+      ownProps - это props которые пришли от родительского компонента.
+        Props которые перешли от HOC функции withBookstoreService()
+        которая получит обернутый компонент connect(mapStateToProps, mapDispatchToProps)
+        тем самым внутри mapStateToProps, mapDispatchToProps можно получить те props
+        которые мы передали из withBookstoreService
 */
 
 class BookList extends Component {
   componentDidMount() {
-    // bookstoreService Класс-Сервиса, который передаются через React Context
-    // booksLoaded - Active Creator обернутый в dispath передаются через Connect
-    const { bookstoreService, booksLoaded, booksRequested, booksError } = this.props;
-
-    // # 0) Сбрасываю Redux state в первоначальное состояние
-    booksRequested();
-    // # 1) Получаю данные (Promise)
-    // # 2) Передать действия (dispatch action)
-    // в React Store, он вызывает c переданным action.type Reducer
-    // который обновляет состояние state
-    // # 3) Обработка ошибки, и запись ее в Redux state
-    bookstoreService
-      .getBooks()
-      .then((data) => booksLoaded(data))
-      .catch((error) => booksError(error));
+    this.props.fetchBooks();
   }
 
   render() {
@@ -84,21 +77,29 @@ class BookList extends Component {
 
 // * Чтение данных из Redux Store
 // state - который определен в Reducer
-const mapStateToProps = (state) => {
-  return {
-    books: state.books,
-    loading: state.loading,
-    error: state.error,
-  };
+const mapStateToProps = ({ books, loading, error }) => {
+  return { books, loading, error };
 };
 
 // * Отправка действий в Redux Store
-// Передача объекта вторым агументом в connect
-// REDUX сделает за нас bindActionCreators({ booksLoaded }, dispatch);
-const mapDispatchToProps = {
-  booksLoaded, // Запись в state в Redux
-  booksRequested, // Сбросить state
-  booksError, // Обработка ошибки
+// Вся Логика работы с данными объединена в одной функции и передается в компонент
+const mapDispatchToProps = (dispatch, ownProps) => {
+  // ownProps - это те props которые мы отправили из withBookstoreService -> bookstoreService
+  return {
+    fetchBooks: () => {
+      // # 0) Сбрасываю Redux state в первоначальное состояние
+      // # 1) Получаю данные (Promise) из Класс Сервиса
+      // # 2) Передать действия (dispatch action)
+      // в React Store, он вызывает c переданным action.type Reducer
+      // который обновляет состояние state
+      // # 3) Обработка ошибки, и запись ее в Redux state
+      dispatch(booksRequested()); // 0
+      ownProps.bookstoreService
+        .getBooks() // 1
+        .then((data) => dispatch(booksLoaded(data))) // 2
+        .catch((error) => dispatch(booksError(error))); // 3
+    },
+  };
 };
 
 // Возвращает обернутый HOC компонент который получает доступ к Класс-Сервису
@@ -109,6 +110,16 @@ export default compose(
 )(BookList);
 
 /*
+  // ES5
+  // state - который определен в Reducer
+  const mapStateToProps = (state) => {
+    return {
+      books: state.books,
+      loading: state.loading,
+      error: state.error,
+    };
+  };
+
   // БЕЗ ACTION CREATOR
   const mapDispatchToProps = (dispatch) => {
     return {
@@ -142,4 +153,32 @@ export default compose(
   const mapDispatchToProps = (dispatch) => {
     return bindActionCreators({ booksLoaded ~ es6}, dispatch);
   };
+
+  // БЕЗ Рефакторинга mapDispatchToProps + (работа с данными внутри componentDidMount)
+
+  // Передача объекта вторым агументом в connect
+  // REDUX сделает за нас bindActionCreators({ booksLoaded }, dispatch);
+  const mapDispatchToProps = {
+    booksLoaded, // Запись в state в Redux
+    booksRequested, // Сбросить state
+    booksError, // Обработка ошибки
+  };
+
+  componentDidMount() {
+    // bookstoreService Класс-Сервиса, который передаются через React Context
+    // booksLoaded - Active Creator обернутый в dispath передаются через Connect
+    const { bookstoreService, booksLoaded, booksRequested, booksError } = this.props;
+
+    // # 0) Сбрасываю Redux state в первоначальное состояние
+    booksRequested();
+    // # 1) Получаю данные (Promise)
+    // # 2) Передать действия (dispatch action)
+    // в React Store, он вызывает c переданным action.type Reducer
+    // который обновляет состояние state
+    // # 3) Обработка ошибки, и запись ее в Redux state
+    bookstoreService
+      .getBooks()
+      .then((data) => booksLoaded(data))
+      .catch((error) => booksError(error));
+  }
 */
