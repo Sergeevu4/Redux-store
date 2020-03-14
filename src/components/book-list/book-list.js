@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import BookListItem from '../book-list-item';
 import { connect } from 'react-redux';
 import { withBookstoreService } from '../hoc';
-import { booksLoaded, booksRequested, booksError } from '../../actions';
+import { fetchBooks } from '../../actions';
 import { compose } from '../../utils';
 
 import './book-list.css';
@@ -82,23 +82,13 @@ const mapStateToProps = ({ books, loading, error }) => {
 };
 
 // * Отправка действий в Redux Store
-// Вся Логика работы с данными объединена в одной функции и передается в компонент
+// Вся Логика работы с данными объединена в одной функции,и передается в компонент
+// fetchBooks включает себя три Action Creator и находится там же
 const mapDispatchToProps = (dispatch, ownProps) => {
   // ownProps - это те props которые мы отправили из withBookstoreService -> bookstoreService
+  const { bookstoreService } = ownProps;
   return {
-    fetchBooks: () => {
-      // # 0) Сбрасываю Redux state в первоначальное состояние
-      // # 1) Получаю данные (Promise) из Класс Сервиса
-      // # 2) Передать действия (dispatch action)
-      // в React Store, он вызывает c переданным action.type Reducer
-      // который обновляет состояние state
-      // # 3) Обработка ошибки, и запись ее в Redux state
-      dispatch(booksRequested()); // 0
-      ownProps.bookstoreService
-        .getBooks() // 1
-        .then((data) => dispatch(booksLoaded(data))) // 2
-        .catch((error) => dispatch(booksError(error))); // 3
-    },
+    fetchBooks: fetchBooks(dispatch, bookstoreService),
   };
 };
 

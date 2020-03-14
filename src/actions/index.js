@@ -22,20 +22,56 @@
     store.dispatch(userLoggedIn('Arnold', 'admin'));
 
     # Если приложение большое, то строки type, лучше всего выносить const в отдельный файл action-types
+
+    # Naming Convention для type, которые занимаются получением данных
+      [тип запроса]_[объект]_[действие]
+
+      FETCH - запрос на получение данных
+      * FETCH_BOOKS_REQUEST - отправка запроса
+      * FETCH_BOOKS_SUCCESS - получения результата
+        (в payload передается полученные данные)
+      * FETCH_BOOKS_FAILURE - получения (обработка) ошибки
+        (в payload передается объект Error)
+
+      UPDATE - запрос на обновления
+      * UPDATE_BOOKS_REQEST
+
 */
 
+const booksRequested = () => ({
+  type: 'FETCH_BOOKS_REQUEST',
+});
+
 const booksLoaded = (newBooks) => ({
-  type: 'BOOKS_LOADED',
+  type: 'FETCH_BOOKS_SUCCESS',
   payload: newBooks,
 });
 
-const booksRequested = () => ({
-  type: 'BOOKS_REQUESTED',
-});
-
 const booksError = (error) => ({
-  type: 'BOOKS_ERROR',
+  type: 'FETCH_BOOKS_FAILURE',
   payload: error,
 });
 
-export { booksLoaded, booksRequested, booksError };
+/*
+  ! Так как Логика получения, записи, и обработки данных
+  может быть понадобиться нескольким компонентам, ее можно вынести в Action.
+  В ней можно объединить несколько Action Creator, тем самым передавая только
+  одну функцию с основно Логикой.
+*/
+
+// Используется внутри mapDispatchToProps
+const fetchBooks = (dispatch, bookstoreService) => () => {
+  // # 0) Сбрасываю Redux state в первоначальное состояние
+  // # 1) Получаю данные (Promise) из Класс Сервиса
+  // # 2) Передать действия (dispatch action)
+  // в React Store, он вызывает c переданным action.type Reducer
+  // который обновляет состояние state
+  // # 3) Обработка ошибки, и запись ее в Redux state
+  dispatch(booksRequested()); // 0
+  bookstoreService
+    .getBooks() // 1
+    .then((data) => dispatch(booksLoaded(data))) // 2
+    .catch((error) => dispatch(booksError(error))); // 3
+};
+
+export { fetchBooks };

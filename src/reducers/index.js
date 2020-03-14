@@ -50,7 +50,7 @@ const initialState = {
 const reducer = (state = initialState, action) => {
   switch (action.type) {
     // Начало загрузки книг, сброс state
-    case 'BOOKS_REQUESTED':
+    case 'FETCH_BOOKS_REQUEST':
       return {
         books: [],
         loading: true,
@@ -58,7 +58,7 @@ const reducer = (state = initialState, action) => {
       };
 
     // Книги загружены, запись в state
-    case 'BOOKS_LOADED':
+    case 'FETCH_BOOKS_SUCCESS':
       return {
         books: action.payload,
         loading: false,
@@ -66,7 +66,7 @@ const reducer = (state = initialState, action) => {
       };
 
     // В момент загрузки произошла ошибка
-    case 'BOOKS_ERROR':
+    case 'FETCH_BOOKS_FAILURE':
       return {
         books: [],
         loading: false,
