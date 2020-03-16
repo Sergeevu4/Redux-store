@@ -51,48 +51,36 @@ const initialState = {
 };
 
 // * Обновления списка покупок
-// item - тот элемент который будем добавляться, или заменять (обновлять) существующий элемент
+// item - тот элемент который будем добавляться, или заменять(обновлять) существующий элемент
 // idx - индекс найденой книги в массиве покупок
 const updateCartItems = (cartItems, item, idx) => {
+  // Полностью удалить их таблицы покупок
+  // Если количество книг равно 0
+  if (item.count === 0) {
+    return [
+      ...cartItems.slice(0, idx), // до
+      ...cartItems.slice(idx + 1), // после
+    ];
+  }
+
   // Добавленной новой книги если ее еще нету в массиве покупок
   if (idx === -1) {
     return [...cartItems, item];
   }
 
-  // Значит книга уже есть в массиве покупок, ее следует обновить
+  // Значит книга уже есть, и ее и текущий state следует заменить(обновить)
   return [
-    ...cartItems.slice(0, idx), // элементы до
+    ...cartItems.slice(0, idx), // до
     item,
-    ...cartItems.slice(idx + 1), // элементы после
+    ...cartItems.slice(idx + 1), // после
   ];
 };
 
-// * Добавления новой или обновления существующей книги в списке покупок
-const updateCartItem = (book, item) => {
-  // Книга есть в массиве покупок, ее нужно обновить
-  if (item) {
-    return {
-      ...item,
-      count: item.count + 1,
-      price: item.price + item.price,
-    };
-  } else {
-    // Значит книги нету в массиве покупок, создать новую
-    // через преобразования в подходящую стуктуру данных
-    return {
-      id: book.id,
-      title: book.title,
-      count: 1,
-      price: book.price,
-    };
-  }
-};
-
-// * Метод №2 Добавления новой или обновления существующей книги в списке покупок
+// * Добавления новой или обновления(+1, -1, -все) книги в списке покупок
 // Вместо того, чтобы рассматривать, существует ли предыдущий элемент или нет
 // Можно сказать, что предыдущий элемент существует всегда
 // и через значения по умолчанию задавать ему значения
-const updateCartItem2 = (book, item = {}) => {
+const updateCartItem = (book, item = {}, quantity) => {
   // Если item === undefined, тогда {}
   // и тогда его значения будут либо по умолчанию, либо:
   const { id = book.id, title = book.title, count = 0, price = 0 } = item;
@@ -101,8 +89,29 @@ const updateCartItem2 = (book, item = {}) => {
   return {
     id,
     title,
-    count: count + 1,
-    price: price + book.price,
+    count: count + quantity, // 1 + 1 || 1 + (-1)
+    price: price + quantity * book.price, // 30 + (-1 * 30) = 30 - 30
+  };
+};
+
+const updateOrder = (state, bookId, quantity) => {
+  // id выбранной книги
+  // const bookId = action.payload;
+
+  const { books, cartItems } = state;
+
+  // Выбранная книга из массива книг полученных с сервера
+  const findBook = books.find((book) => book.id === bookId);
+  // id выбранной книги в массиве покупок
+  const itemIndex = cartItems.findIndex((book) => book.id === bookId);
+  // Нахождения выбранной книги в массиве покупок
+  const oldItem = cartItems[itemIndex];
+  // Новая или обновленная книга
+  const newItem = updateCartItem(findBook, oldItem, quantity);
+
+  return {
+    ...state,
+    cartItems: updateCartItems(cartItems, newItem, itemIndex),
   };
 };
 
@@ -137,21 +146,15 @@ const reducer = (state = initialState, action) => {
 
     // Добавления (Обновление) полученой с сервера книги, в таблице покупок
     case 'BOOK_ADDED_TO_CART':
-      // id выбранной книги
-      const bookId = action.payload;
-      // Выбранная книга из массива книг полученных с сервера
-      const findBook = state.books.find((book) => book.id === bookId);
-      // id выбранной книги в массиве покупок
-      const itemIndex = state.cartItems.findIndex((book) => book.id === bookId);
-      // Нахождения выбранной книги в массиве покупок
-      const oldItem = state.cartItems[itemIndex];
-      // Новая или обновленная книга
-      const newItem = updateCartItem2(findBook, oldItem);
+      return updateOrder(state, action.payload, 1);
 
-      return {
-        ...state,
-        cartItems: updateCartItems(state.cartItems, newItem, itemIndex),
-      };
+    case 'BOOK_REMOVED_FROM_CART':
+      return updateOrder(state, action.payload, -1);
+
+    case 'ALL_BOOKS_REMOVED_FROM_CART':
+      const findItem = state.cartItems.find(({ id }) => id === action.payload);
+      // -все книги
+      return updateOrder(state, action.payload, -findItem.count);
 
     default:
       return state;
