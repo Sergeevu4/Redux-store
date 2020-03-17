@@ -1,23 +1,26 @@
 /*
+  ! Сперва стоит с 'формы' state, а затем писать для него reducers
+    а не наоборот (начинать с функций и "подгонять" под них state).
+
   ! Reducer - (Логика) Функция которая знает как обновлять глобальное состояние state,
     для любого события в приложении.
     Принимает два параметра:
       * 1) state - текущее состояние
       * 2) action - действие которое нужно совершить
 
-    # Reducer должна вернуть полное состояние нового state
-      не только те ключи которые следует обновить, полностью весь объект который
-      будет новым state, a не частичное как в setState({})
+    # Reducer должен вернуть полное состояние нового state
+        не только те ключи которые следует обновить, полностью весь объект который
+        будет новым state, a не частичное как в setState({})
 
     # Если state (undefined), необходимо вернуть первоначальное состояние.
         В параметрах в Reducer state, выставить дефолт состояние: state = 0 - дефолтное значение
 
     # Если Reducer не знает какого-то действия (action.type), то необходимо вернуть
-      state без изменения.
+        state без изменения.
 
     ! Функция Reducer - должна быть чистой функцией:
       * 1. Возвращаемое значение зависит только от аргументов.
-        Всегда возвращает одинаковое состояние при одинаковых переданных аргументах.
+          Всегда возвращает одинаковое состояние при одинаковых переданных аргументах.
 
           Читая: (a, b) => a > b ? a : b
           Нет: (a) => Math.random() * a.
@@ -38,17 +41,32 @@
 
           Любые функции которые модифицируют DOM, вызывают server, устанавливают setTimeout,
             исп. Math.random, текущее время - НЕ ЯВЛЯЮТСЯ ЧИСТЫМИ, ОНИ ЗАВИСЯТ ОТ ВНЕШНИХ РЕСУРСОВ
+
+
+    ! Не все функции, которые работают с redux обязаны быть reducer'ами.
+      В reducer'е вы совершенно спокойно можете использовать обычные вспомогательные функции
+      (при условии, что они чистые).
+
+    # Как правильно организовать код Reducer при маштабировании
+      1. Попытаться разделить действия по категориям
+          - действия которые работают со списком книг (books)
+          - действия которые работают со списком заказов (cartItems)
+
+      2. Разбить Reducer на более мелкие функции
+          Если действия взаимосвязанны между собой, и данные зависит от друг друга
+          то его сам initialState и функция reducer остаются в одном файле.
+
+      3. Combine Reducers работает, только когда reducer абсолютно независимы.
+       У нас, одна "ветка" state зависела от другой "ветки" и поэтому combineReducers нам бы не помог.
+
+
+    ! combineReducers -  работает, только когда reducer абсолютно независимы
+    Главный аспект работы функции combineReducers - каждая функция это независимый reducer,
+    и она должна работать как независимый reduser.
+
   */
 
-// ! Нельзя мутировать (изменять)
-// Первоначальный State
-const initialState = {
-  books: [], // Данные с сервера
-  loading: true,
-  error: null,
-  cartItems: [], // Покупки
-  orderTotal: 220,
-};
+// ! Первоначальный State, нельзя мутировать (изменять)
 
 // * Обновления списка покупок
 // item - тот элемент который будем добавляться, или заменять(обновлять) существующий элемент
@@ -76,7 +94,7 @@ const updateCartItems = (cartItems, item, idx) => {
   ];
 };
 
-// * Добавления новой или обновления(+1, -1, -все) книги в списке покупок
+// * Добавления новой или обновления(+1, -1, -все) книги в таблице покупок
 // Вместо того, чтобы рассматривать, существует ли предыдущий элемент или нет
 // Можно сказать, что предыдущий элемент существует всегда
 // и через значения по умолчанию задавать ему значения
@@ -94,11 +112,12 @@ const updateCartItem = (book, item = {}, quantity) => {
   };
 };
 
+// * Обновления таблицы покупок
 const updateOrder = (state, bookId, quantity) => {
-  // id выбранной книги
-  // const bookId = action.payload;
-
-  const { books, cartItems } = state;
+  const {
+    bookList: { books },
+    shoppingCart: { cartItems },
+  } = state;
 
   // Выбранная книга из массива книг полученных с сервера
   const findBook = books.find((book) => book.id === bookId);
@@ -110,17 +129,29 @@ const updateOrder = (state, bookId, quantity) => {
   const newItem = updateCartItem(findBook, oldItem, quantity);
 
   return {
-    ...state,
     cartItems: updateCartItems(cartItems, newItem, itemIndex),
+    orderTotal: 0,
   };
 };
 
-const reducer = (state = initialState, action) => {
+// * Отвечает только за обновления части state: bookList
+const updateBookList = (state, action) => {
+  // ! Инициализация собственной части state
+  if (state === undefined) {
+    // bookList:
+    return {
+      books: [], // Данные с сервера
+      loading: true,
+      error: null,
+    };
+  }
+
+  // !...state - больше не нужно передавать оставшиеся поля
+  // После разделения reduser, работаем только с bookList
   switch (action.type) {
     // Начало загрузки книг, сброс state
     case 'FETCH_BOOKS_REQUEST':
       return {
-        ...state, // Копируем все свойства, которые мы не меняем
         books: [],
         loading: true,
         error: null,
@@ -129,7 +160,6 @@ const reducer = (state = initialState, action) => {
     // Книги загружены, запись в state
     case 'FETCH_BOOKS_SUCCESS':
       return {
-        ...state,
         books: action.payload,
         loading: false,
         error: null,
@@ -138,12 +168,30 @@ const reducer = (state = initialState, action) => {
     // В момент загрузки произошла ошибка
     case 'FETCH_BOOKS_FAILURE':
       return {
-        ...state,
         books: [],
         loading: false,
         error: action.payload, // Объект ошибки
       };
 
+    // ! В функцию приходят action с updateShoppingCart
+    // ! Так как она их не знает, возвращаем тот объект с которым работает
+    default:
+      return state.bookList;
+  }
+};
+
+// * Отвечает только за обновления части state: shoppingCart
+const updateShoppingCart = (state, action) => {
+  // ! Инициализация собственной части state
+  if (state === undefined) {
+    // shoppingCart:
+    return {
+      cartItems: [], // Покупки
+      orderTotal: 0,
+    };
+  }
+
+  switch (action.type) {
     // Добавления (Обновление) полученой с сервера книги, в таблице покупок
     case 'BOOK_ADDED_TO_CART':
       return updateOrder(state, action.payload, 1);
@@ -152,13 +200,27 @@ const reducer = (state = initialState, action) => {
       return updateOrder(state, action.payload, -1);
 
     case 'ALL_BOOKS_REMOVED_FROM_CART':
-      const findItem = state.cartItems.find(({ id }) => id === action.payload);
+      const findItem = state.shoppingCart.cartItems.find(
+        ({ id }) => id === action.payload
+      );
       // -все книги
       return updateOrder(state, action.payload, -findItem.count);
 
     default:
-      return state;
+      return state.shoppingCart;
   }
+};
+
+// * Основной Reducer
+// Reducer больше не отвечает за первоначальное состояние initialState
+// Каждая часть state инициализируется внутри вспомогательных функции
+const reducer = (state, action) => {
+  // Использует две вспомогательные функции
+  // Которые обрабатывают, обновляют только свою структуру state
+  return {
+    bookList: updateBookList(state, action),
+    shoppingCart: updateShoppingCart(state, action),
+  };
 };
 
 export { reducer };
