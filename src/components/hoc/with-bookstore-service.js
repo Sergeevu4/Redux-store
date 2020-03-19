@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookstoreServiceConsumer } from '../bookstore-service-context';
 
-const withBookstoreService = (mapMethodsToProps) => (Wrapped) =>
+const withBookstoreService = () => (Wrapped) =>
   function WithBookstoreService(props) {
     return (
       // Получаю доступ к Класс Сервису через внутреннюю функцию которая принимает сервис
