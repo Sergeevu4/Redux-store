@@ -1,8 +1,9 @@
 import React, { Component } from 'react';
 import BookListItem from '../book-list-item';
 import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import { withBookstoreService } from '../hoc';
-import { fetchBooks } from '../../actions';
+import { fetchBooks, booksAddedToCart } from '../../actions';
 import { compose } from '../../utils';
 
 import './book-list.css';
@@ -16,45 +17,56 @@ import ErrorIndicator from '../error-indicator';
     connect возвращает новый компонент который знает об Redux:
       переданный компонент оборачивается, и теперь он будет брать данный из store.
 
-    * Конфигурация:
-      1) Функция - нужна чтобы получить только нужные значения из Redux Store и передать их в Компонент через props
-      2) Функция ИЛИ ОБЪЕКТ - созданные функции Action Creator будут передан в компонент.
-        Таким способом компонент может обновить состояние в store
-        ! Если в качестве второго аргумента connect передать объект actions,
-        ! то connect выполнит код за нас: bindActionCreators(actions, dispatch);
+    # Конфигурация:
+      * 1) mapStateToProps:
+          (Функция) - нужна чтобы получить только нужные значения из Redux Store и передать их в Компонент через props
 
-   bindActionCreators(actionCreators, dispatch) - связывает функцию action creator c функцией dispath()
-    * dispatch - всегда работает с тем store на котором он был создан
-    Созданные таким способом функции делают сразу два действия - создание действия (action) и отправка action в dispatch()
+      * 2) mapDispatchToProps:
+          (Функция ИЛИ ОБЪЕКТ) - созданные функции Action Creator будут передан в компонент.
+          Таким способом компонент может обновить состояние в store
+          ! Если в качестве второго аргумента connect передать mapDispatchToProps ~ объект,
+          ! то connect выполнит код за нас: bindActionCreators(actions, dispatch);
 
-    * actionCreators(Функция или Объект): один action creator или объект со значениями которого являются actions creator.
+        * Использовать объект, необходимо когда все, что нужно сделать, это взять actions Creator и "обернуть"
+          их при помощи bindActionCreators.
+          Если коде mapDispatchToProps более сложная логика, то нужно использовать функцию.
 
-    # В зависимости от того что передели внутрь actionCreators, возвращает
-      (Функцию или Объект): Объект с теме же ключами, что и переданный, но свойства вместо
-      оригинальный функций action creator, получаем обернутую версию в которой они уже вызваны внутри dispatch
+   # bindActionCreators(actionCreators, dispatch) - связывает функцию action creator c функцией dispath()
+      ! dispatch - всегда работает с тем store на котором он был создан
+      Созданные таким способом функции делают сразу два действия - вызов действия в action creator и отправка его в dispatch()
 
-      Если вы передаете единственную функцию (один action creator),
-      возвращаемое значение также будет единственной функцией которая обернута и вызвана в dispatch
+    * actionCreators(Функция или Объект ~ через * import):
+        один action creator или объект со значениями которые являются actions creators.
 
-    # mapStateToProps и mapDispatchToProps есть вторгой аргумент: ownProps
-      ownProps - это props которые пришли от родительского компонента.
-        Props которые перешли от HOC функции withBookstoreService()
-        которая получит обернутый компонент connect(mapStateToProps, mapDispatchToProps)
-        тем самым внутри mapStateToProps, mapDispatchToProps можно получить те props
-        которые мы передали из withBookstoreService
+    * Возвращается в зависимости от того, что передали во внутрь actionCreators (Функцию или Объект):
+        Объект с теме же ключами, что и переданный, но свойства вместо оригинальный функций action creator,
+        получаем обернутую версию в которой они уже вызваны внутри dispatch
 
-    # Component Container - Паттерн React-Redux - разделения логики и орисовки
+        Если вы передаете единственную функцию (один action creator),
+        возвращаемое значение также будет единственной функцией которая обернута и вызвана в dispatch
+
+  # mapStateToProps и mapDispatchToProps есть вторгой аргумент: ownProps
+    ownProps - это props которые пришли от родительского компонента.
+      Props которые перешли от HOC функции withBookstoreService()
+      которая получит обернутый компонент connect(mapStateToProps, mapDispatchToProps)
+      тем самым внутри mapStateToProps, mapDispatchToProps можно получить те props
+      которые мы передали из withBookstoreService
+
+  # Component Container - Паттерн React-Redux - разделения логики и орисовки
       Можно вынести все контейнеры в отдельную папку containers или PersonContainer и там держать все компоненты контайнеры
       Компоненты-контайнеры работают с Redux, реализуют loading, error, другую Логику
+
+  ! Функция mapStateToProps выполняется всегда, когда запускается процесс рендеринга
+   компонента, даже если его данные не изменились (но изменились для каких-то других компонентов в этой же части дерева компонентов)
 */
 
-// # (Презентационный) Компонент отвечает за отображение элементов - (ничего не знает Логике)
-const Booklist = ({ books }) => {
+// # (Презентационный) Компонент отвечает за отображение элементов - (ничего не знает о Логике)
+const Booklist = ({ books, onAddedToCart }) => {
   return (
     <ul className='book-list'>
       {books.map((book) => (
         <li key={book.id}>
-          <BookListItem book={book} />
+          <BookListItem book={book} onAddedToCart={(id) => onAddedToCart(book.id)} />
         </li>
       ))}
     </ul>
@@ -71,7 +83,7 @@ class BookListContainer extends Component {
     // Props из Redux Store через mapStateToProps
     // # 4) После обновления state, через dispatch action,
     // загружаются данные и обновляется компонент с этими данными
-    const { books, loading, error } = this.props;
+    const { books, loading, error, onAddedToCart } = this.props;
 
     if (loading) {
       return <Spinner />;
@@ -81,13 +93,13 @@ class BookListContainer extends Component {
       return <ErrorIndicator />;
     }
 
-    return <Booklist books={books} />;
+    return <Booklist books={books} onAddedToCart={onAddedToCart} />;
   }
 }
 
 // * Чтение данных из Redux Store
 // state - который определен в Reducer
-const mapStateToProps = ({ books, loading, error }) => {
+const mapStateToProps = ({ bookList: { books, loading, error } }) => {
   return { books, loading, error };
 };
 
@@ -97,9 +109,26 @@ const mapStateToProps = ({ books, loading, error }) => {
 const mapDispatchToProps = (dispatch, ownProps) => {
   // ownProps - это те props которые мы отправили из withBookstoreService -> bookstoreService
   const { bookstoreService } = ownProps;
-  return {
-    fetchBooks: fetchBooks(dispatch, bookstoreService),
-  };
+
+  // ! Вызов Thunk через bindActionCreators
+  return bindActionCreators(
+    {
+      fetchBooks: fetchBooks(bookstoreService),
+      onAddedToCart: booksAddedToCart,
+    },
+    dispatch
+  );
+
+  /*
+    // ! Явный Thunk
+    return {
+      // * Через обычную функцию
+      // fetchBooks: fetchBooks(dispatch, bookstoreService),
+      // * Через Thunk
+      fetchBooks: () => dispatch(fetchBooks(bookstoreService)()),
+      onAddedToCart: (id) => dispatch(booksAddedToCart(id)),
+    };
+  */
 };
 
 // Возвращает обернутый HOC компонент получает доступ к Класс-Сервису
