@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { Component } from 'react';
 import './shop-header.css';
 import { Link } from 'react-router-dom';
+import { connect } from 'react-redux';
 
 const ShopHeader = ({ numItems, total }) => {
   return (
@@ -17,4 +18,18 @@ const ShopHeader = ({ numItems, total }) => {
   );
 };
 
-export default ShopHeader;
+class ShopHeaderContainer extends Component {
+  render() {
+    return <ShopHeader {...this.props} />;
+  }
+}
+
+const mapStateToProps = ({ shoppingCart: { cartItems, orderTotal } }) => {
+  const numItems = cartItems.reduce((sum, { count }) => sum + count, 0);
+  return {
+    numItems,
+    total: orderTotal,
+  };
+};
+
+export default connect(mapStateToProps)(ShopHeaderContainer);
