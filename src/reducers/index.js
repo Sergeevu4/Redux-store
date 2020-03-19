@@ -44,172 +44,47 @@
 
 
     ! Не все функции, которые работают с redux обязаны быть reducer'ами.
-      В reducer'е вы совершенно спокойно можете использовать обычные вспомогательные функции
-      (при условии, что они чистые).
+        В reducer'е вы совершенно спокойно можете использовать обычные вспомогательные функции
+        (при условии, что они чистые).
 
     # Как правильно организовать код Reducer при маштабировании
-      1. Попытаться разделить действия по категориям
-          - действия которые работают со списком книг (books)
-          - действия которые работают со списком заказов (cartItems)
+        Как только reducer становится сложным - необходимо сразу упрощайте его
+        работайте со структурой глобального state: объединяйте свойства в объекты,
+        вынося логику обновления объектов из глобального state в отдельные функции
 
-      2. Разбить Reducer на более мелкие функции
-          Если действия взаимосвязанны между собой, и данные зависит от друг друга
-          то его сам initialState и функция reducer остаются в одном файле.
+      Попытаться разделить действия по категориям и разбить Reducer на более мелкие функции
+        - действия которые работают со списком книг (books)
+        - действия которые работают со списком заказов (cartItems)
 
-      3. Combine Reducers работает, только когда reducer абсолютно независимы.
-       У нас, одна "ветка" state зависела от другой "ветки" и поэтому combineReducers нам бы не помог.
+    # combineReducers -  работает, только когда reducer абсолютно независимы
+      Главный аспект работы combineReducers - каждая функция reducer - независимая,
+          и она должна работать как независимый reduser, ее initialState не завивист от другого
 
-
-    ! combineReducers -  работает, только когда reducer абсолютно независимы
-    Главный аспект работы функции combineReducers - каждая функция это независимый reducer,
-    и она должна работать как независимый reduser.
-
+      ! В данном случае state завит от другой "ветки-объекта"
+        и поэтому combineReducers использовать нельзя.
   */
 
 // ! Первоначальный State, нельзя мутировать (изменять)
 
-// * Обновления списка покупок
-// item - тот элемент который будем добавляться, или заменять(обновлять) существующий элемент
-// idx - индекс найденой книги в массиве покупок
-const updateCartItems = (cartItems, item, idx) => {
-  // Полностью удалить их таблицы покупок
-  // Если количество книг равно 0
-  if (item.count === 0) {
-    return [
-      ...cartItems.slice(0, idx), // до
-      ...cartItems.slice(idx + 1), // после
-    ];
-  }
+// * Вспомогательные функции, которы отвечают за свою часть state
+import { updateBookList } from './book-list';
+import { updateShoppingCart } from './shopping-cart';
 
-  // Добавленной новой книги если ее еще нету в массиве покупок
-  if (idx === -1) {
-    return [...cartItems, item];
-  }
-
-  // Значит книга уже есть, и ее и текущий state следует заменить(обновить)
-  return [
-    ...cartItems.slice(0, idx), // до
-    item,
-    ...cartItems.slice(idx + 1), // после
-  ];
-};
-
-// * Добавления новой или обновления(+1, -1, -все) книги в таблице покупок
-// Вместо того, чтобы рассматривать, существует ли предыдущий элемент или нет
-// Можно сказать, что предыдущий элемент существует всегда
-// и через значения по умолчанию задавать ему значения
-const updateCartItem = (book, item = {}, quantity) => {
-  // Если item === undefined, тогда {}
-  // и тогда его значения будут либо по умолчанию, либо:
-  const { id = book.id, title = book.title, count = 0, price = 0 } = item;
-
-  // Книга есть в массиве покупок, ее нужно обновить
-  return {
-    id,
-    title,
-    count: count + quantity, // 1 + 1 || 1 + (-1)
-    price: price + quantity * book.price, // 30 + (-1 * 30) = 30 - 30
-  };
-};
-
-// * Обновления таблицы покупок
-const updateOrder = (state, bookId, quantity) => {
-  const {
-    bookList: { books },
-    shoppingCart: { cartItems },
-  } = state;
-
-  // Выбранная книга из массива книг полученных с сервера
-  const findBook = books.find((book) => book.id === bookId);
-  // id выбранной книги в массиве покупок
-  const itemIndex = cartItems.findIndex((book) => book.id === bookId);
-  // Нахождения выбранной книги в массиве покупок
-  const oldItem = cartItems[itemIndex];
-  // Новая или обновленная книга
-  const newItem = updateCartItem(findBook, oldItem, quantity);
-
-  return {
-    cartItems: updateCartItems(cartItems, newItem, itemIndex),
-    orderTotal: 0,
-  };
-};
-
-// * Отвечает только за обновления части state: bookList
-const updateBookList = (state, action) => {
-  // ! Инициализация собственной части state
-  if (state === undefined) {
-    // bookList:
-    return {
-      books: [], // Данные с сервера
+/*
+  * Так выглядит state
+  initialState = {
+    // Данные с сервера
+    books: [],
       loading: true,
       error: null,
-    };
-  }
-
-  // !...state - больше не нужно передавать оставшиеся поля
-  // После разделения reduser, работаем только с bookList
-  switch (action.type) {
-    // Начало загрузки книг, сброс state
-    case 'FETCH_BOOKS_REQUEST':
-      return {
-        books: [],
-        loading: true,
-        error: null,
-      };
-
-    // Книги загружены, запись в state
-    case 'FETCH_BOOKS_SUCCESS':
-      return {
-        books: action.payload,
-        loading: false,
-        error: null,
-      };
-
-    // В момент загрузки произошла ошибка
-    case 'FETCH_BOOKS_FAILURE':
-      return {
-        books: [],
-        loading: false,
-        error: action.payload, // Объект ошибки
-      };
-
-    // ! В функцию приходят action с updateShoppingCart
-    // ! Так как она их не знает, возвращаем тот объект с которым работает
-    default:
-      return state.bookList;
-  }
-};
-
-// * Отвечает только за обновления части state: shoppingCart
-const updateShoppingCart = (state, action) => {
-  // ! Инициализация собственной части state
-  if (state === undefined) {
-    // shoppingCart:
-    return {
-      cartItems: [], // Покупки
+    },
+    // Таблица покупок
+    shoppingCart: {
+      cartItems: [],
       orderTotal: 0,
     };
   }
-
-  switch (action.type) {
-    // Добавления (Обновление) полученой с сервера книги, в таблице покупок
-    case 'BOOK_ADDED_TO_CART':
-      return updateOrder(state, action.payload, 1);
-
-    case 'BOOK_REMOVED_FROM_CART':
-      return updateOrder(state, action.payload, -1);
-
-    case 'ALL_BOOKS_REMOVED_FROM_CART':
-      const findItem = state.shoppingCart.cartItems.find(
-        ({ id }) => id === action.payload
-      );
-      // -все книги
-      return updateOrder(state, action.payload, -findItem.count);
-
-    default:
-      return state.shoppingCart;
-  }
-};
+*/
 
 // * Основной Reducer
 // Reducer больше не отвечает за первоначальное состояние initialState
