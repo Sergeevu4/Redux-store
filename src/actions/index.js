@@ -1,6 +1,6 @@
-// ! Action Creator
-
 /*
+   ! Action Creator
+
     Action - (обычный объект) Интерфейс общения между компонентами приложения и объектом STORE,
     а так же его изменения.
     У этого объекта должно быть поле type: "СТРОКА которая описывает действие"
@@ -36,6 +36,16 @@
       UPDATE - запрос на обновления
       * UPDATE_BOOKS_REQEST
 
+      # Thunk (Middleware)
+        Thunk middleware - позволяет передавать в store функции, a не объекты Action.
+        Такие функции принимают dispatch() и getState() - можно вытащить данные и передать на backend
+
+          const getPerson = (id) => (dispatch, getState) => { // action creator
+              dispatch({ type: ‘FETCH_PERSON_REQUEST' });
+              fetchPerson(id) // асинхронное действие
+                  .then((data) => dispatch({ type: ‘FETCH_PERSON_SUCCESS’ }))
+                  .catch((error) => dispatch({ type: ‘FETCH_PERSON_FAILURE’, error}))
+          }
 */
 
 const booksRequested = () => ({
@@ -52,15 +62,31 @@ const booksError = (error) => ({
   payload: error,
 });
 
+const booksAddedToCart = (bookId) => ({
+  type: 'BOOK_ADDED_TO_CART',
+  payload: bookId,
+});
+
+const booksRemovedFromCart = (bookId) => ({
+  type: 'BOOK_REMOVED_FROM_CART',
+  payload: bookId,
+});
+
+const allBooksRemovedFromCart = (bookId) => ({
+  type: 'ALL_BOOKS_REMOVED_FROM_CART',
+  payload: bookId,
+});
+
 /*
   ! Так как Логика получения, записи, и обработки данных
   может быть понадобиться нескольким компонентам, ее можно вынести в Action.
-  В ней можно объединить несколько Action Creator, тем самым передавая только
-  одну функцию с основно Логикой.
+  В ней можно объединить несколько Action Creator, тем самым передавая  только
+  одну функцию с основно Логикой в mapDispatchToProps.
 */
 
+// * Получения асинхронных данных через обычную функцию
 // Используется внутри mapDispatchToProps
-const fetchBooks = (dispatch, bookstoreService) => () => {
+const fetchBooksOld = (dispatch, bookstoreService) => () => {
   // # 0) Сбрасываю Redux state в первоначальное состояние
   // # 1) Получаю данные (Promise) из Класс Сервиса
   // # 2) Передать действия (dispatch action)
@@ -74,4 +100,14 @@ const fetchBooks = (dispatch, bookstoreService) => () => {
     .catch((error) => dispatch(booksError(error))); // 3
 };
 
-export { fetchBooks };
+// * Получения асинхронных данных через Thunk
+const fetchBooks = (bookstoreService) => () => (dispatch) => {
+  dispatch(booksRequested());
+
+  bookstoreService
+    .getBooks()
+    .then((data) => dispatch(booksLoaded(data)))
+    .catch((error) => dispatch(booksError(error)));
+};
+
+export { fetchBooks, booksAddedToCart, booksRemovedFromCart, allBooksRemovedFromCart };
