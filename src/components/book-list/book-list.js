@@ -11,39 +11,73 @@ import Spinner from '../spinner';
 import ErrorIndicator from '../error-indicator';
 
 /*
-  # connect() - компонент высшего порядка HOC, который передает значения из store в компонент
+  # connect - компонент высшего порядка HOC, который передает значения из store в компонент
   connect(Конфигурация)(Компонент) - получить доступ к целому store в Provider.
     Работает так же как и SwapiServiceConsumer
     connect возвращает новый компонент который знает об Redux:
       переданный компонент оборачивается, и теперь он будет брать данный из store.
 
+   # bindActionCreators(actionCreators, dispatch) - связывает функцию action creator c функцией dispath()
+      ! dispatch - всегда работает с тем store на котором он был создан
+
+    Созданные таким способом функции делают сразу два действия
+      - вызов действия в action creator и отправка его в dispatch()
+
+    * actionCreators(Функция или Объект):
+
+        bindActionCreators принимает объект
+            const mapDispatchToProps = (dispatch) => {
+              return bindActionCreators({
+                one: action creator
+              }, dispatch);
+            };
+
+        То вернет объект с ключами у которого будут названия функция которые хотим получить, внутри компонента.
+         А свойствах будет лежать анонимная функция внутри которой вместо оригинальный функций action creator,
+          получаем обернутую версию в которой он уже вызваны внутри dispatch и которую можно передать параметры
+          Reducer
+
+        Если вы передаете единственную функцию (один action creator),
+        возвращаемое значение также будет единственной функцией которая обернута и вызвана в dispatch
+
+      ! import * as actions from "../actions";
+      Можно connect передать вместо mapDispatchToProps, объект с action creators которые будут
+      которые будут скрыто обернуты в bindActionCreators(actions, dispatch)
+
+
     # Конфигурация:
       * 1) mapStateToProps:
           (Функция) - нужна чтобы получить только нужные значения из Redux Store и передать их в Компонент через props
 
-      * 2) mapDispatchToProps:
-          (Функция ИЛИ ОБЪЕКТ) - созданные функции Action Creator будут передан в компонент.
-          Таким способом компонент может обновить состояние в store
-          ! Если в качестве второго аргумента connect передать mapDispatchToProps ~ объект,
-          ! то connect выполнит код за нас: bindActionCreators(actions, dispatch);
+      * 2) mapDispatchToProps: (ФУНКЦИЯ ИЛИ ОБЪЕКТ) - Action Creator будут передан в компонент.
+            Таким способом компонент может обновить состояние в store
 
-        * Использовать объект, необходимо когда все, что нужно сделать, это взять actions Creator и "обернуть"
+            ФУНКЦИЯ - возвращает объект свойствами которые будут функции,
+              внутри которых будут вызван метод dispatch внутри которого будет вызвана
+              функция action creator которая может принимать какие-то параметры из компонента
+              и передавать их в Reducer
+
+            mapDispatchToProps = (dispatch, ownProps)
+              booksLoaded: (newBooks) => {
+                    dispatch(booksLoaded(newBooks));
+                },
+              };
+
+            ОБЪЕКТ:
+              mapDispatchToProps = {
+                booksLoaded
+              }
+
+            ! Если в качестве второго аргумента connect передать mapDispatchToProps ~ объект,
+            ! то connect выполнит код за нас bindActionCreators(actions, dispatch)
+              То есть передаст функцию под свойством booksLoaded в компонент
+                function () {
+                  return dispatch(actionCreator.apply(this, arguments));
+                }
+
+        ! Использовать ОБЪЕКТ, необходимо когда все, что нужно сделать, это взять actions Creator и "обернуть"
           их при помощи bindActionCreators.
           Если коде mapDispatchToProps более сложная логика, то нужно использовать функцию.
-
-   # bindActionCreators(actionCreators, dispatch) - связывает функцию action creator c функцией dispath()
-      ! dispatch - всегда работает с тем store на котором он был создан
-      Созданные таким способом функции делают сразу два действия - вызов действия в action creator и отправка его в dispatch()
-
-    * actionCreators(Функция или Объект ~ через * import):
-        один action creator или объект со значениями которые являются actions creators.
-
-    * Возвращается в зависимости от того, что передали во внутрь actionCreators (Функцию или Объект):
-        Объект с теме же ключами, что и переданный, но свойства вместо оригинальный функций action creator,
-        получаем обернутую версию в которой они уже вызваны внутри dispatch
-
-        Если вы передаете единственную функцию (один action creator),
-        возвращаемое значение также будет единственной функцией которая обернута и вызвана в dispatch
 
   # mapStateToProps и mapDispatchToProps есть вторгой аргумент: ownProps
     ownProps - это props которые пришли от родительского компонента.
@@ -76,6 +110,7 @@ const Booklist = ({ books, onAddedToCart }) => {
 // # Компонент Контейнер - отвечает за Логику, но не за отображения
 class BookListContainer extends Component {
   componentDidMount() {
+    // Можно передать любые параметры в Thunk через компонент во время вызова
     this.props.fetchBooks();
   }
 
