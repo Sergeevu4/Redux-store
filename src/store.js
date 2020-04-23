@@ -11,7 +11,7 @@ import { composeWithDevTools } from 'redux-devtools-extension';
 
     Чаще всего у сторонних библиотек есть методы по расширению их базового функционала
       так как автор не может предусмотреть все варианты использования своей библиотекой,
-      а разаработчик предоставить функционал по расширению, изменению функционала.
+      а разработчик предоставить функционал по расширению, изменению функционала.
 
    ! monkey patching - замены какого-то метода в api на свою собственную реализацию
       Применяется в крайних случаях когда сама библиотека не поддерживает никаких
@@ -34,13 +34,13 @@ import { composeWithDevTools } from 'redux-devtools-extension';
       Для того чтобы использовать Middleware мы используем функцию applyMiddleware.
 
       * АРГУМЕНТЫ:
-        - store - не полный, в котором есть метод store.getState() store.dispatch - орг. dispath
+        - store - не полный, в котором есть метод store.getState() и store.dispatch() - орг. dispath
         - dispatch ~ next - орг. функция dispatch или уже модифицированная версия
         - action - вызванный action creator
           возвращает новый модифицированный dispatch или передает его дальше в другой middleware
         * const strMiddleware = (store) => (dispatch или next) => (action) => {...}
           ИЛИ
-        * const middleware = ({ dispatch, getStore }) => (next) => (action) => {...}
+        * const middleware = ({ dispatch, getState }) => (next) => (action) => {...}
 
       * ВЫЗОВ:
         const store = createStore(reducer, applyMiddleware(strMiddleware, logMiddleware));

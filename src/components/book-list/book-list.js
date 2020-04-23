@@ -14,7 +14,7 @@ import ErrorIndicator from '../error-indicator';
   # connect - компонент высшего порядка HOC, который передает значения из store в компонент
   connect(Конфигурация)(Компонент) - получить доступ к целому store в Provider.
     Работает так же как и SwapiServiceConsumer
-    connect возвращает новый компонент который знает об Redux:
+    connect возвращает новый компонент который знает о Redux:
       переданный компонент оборачивается, и теперь он будет брать данный из store.
 
    # bindActionCreators(actionCreators, dispatch) - связывает функцию action creator c функцией dispath()
@@ -25,25 +25,23 @@ import ErrorIndicator from '../error-indicator';
 
     * actionCreators(Функция или Объект):
 
-        bindActionCreators принимает объект
-            const mapDispatchToProps = (dispatch) => {
-              return bindActionCreators({
-                one: action creator
-              }, dispatch);
-            };
+        bindActionCreators принимает объект:
 
-        То вернет объект с ключами у которого будут названия функция которые хотим получить, внутри компонента.
-         А свойствах будет лежать анонимная функция внутри которой вместо оригинальный функций action creator,
-          получаем обернутую версию в которой он уже вызваны внутри dispatch и которую можно передать параметры
-          Reducer
+          const mapDispatchToProps = (dispatch) => {
+            return bindActionCreators({
+              one: action creator
+            }, dispatch);
+          };
 
-        Если вы передаете единственную функцию (один action creator),
+        Если принимает объект, то вернет объект с ключами у которого в свойствах будет лежать анонимная функция внутри которой вместо оригинальный функций action creator,
+        получаем обернутую версию в которой action уже вызваны внутри dispatch и которую можно передать параметры в payload, Reducer
+
+        Если вы передается единственную функцию (один action creator),
         возвращаемое значение также будет единственной функцией которая обернута и вызвана в dispatch
 
       ! import * as actions from "../actions";
-      Можно connect передать вместо mapDispatchToProps, объект с action creators которые будут
+      Можно в connect передать вместо mapDispatchToProps, объект с action creators
       которые будут скрыто обернуты в bindActionCreators(actions, dispatch)
-
 
     # Конфигурация:
       * 1) mapStateToProps:
@@ -52,10 +50,10 @@ import ErrorIndicator from '../error-indicator';
       * 2) mapDispatchToProps: (ФУНКЦИЯ ИЛИ ОБЪЕКТ) - Action Creator будут передан в компонент.
             Таким способом компонент может обновить состояние в store
 
-            ФУНКЦИЯ - возвращает объект свойствами которые будут функции,
-              внутри которых будут вызван метод dispatch внутри которого будет вызвана
+            ФУНКЦИЯ - возвращает объект свойствами которого будут анонимные функции,
+              в которых вызван метод dispatch внутри которого вызвана
               функция action creator которая может принимать какие-то параметры из компонента
-              и передавать их в Reducer
+              и передавать их в Reducer через пармаметры анонимной функции
 
             mapDispatchToProps = (dispatch, ownProps)
               booksLoaded: (newBooks) => {
@@ -196,7 +194,7 @@ export default compose(
     };
   };
 
-  // БЕЗ bindActionsCreator c ACTION CREATOR
+  // ACTION CREATOR БЕЗ bindActionsCreator
   const mapDispatchToProps = (dispatch) => {
   return {
     booksLoaded: (newBooks) => {

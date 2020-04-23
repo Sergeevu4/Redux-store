@@ -71,10 +71,11 @@ import { updateBookList } from './book-list';
 import { updateShoppingCart } from './shopping-cart';
 
 /*
-  * Так выглядит state
-  initialState = {
-    // Данные с сервера
-    books: [],
+  * Так выглядит Redux state
+  state = {
+  // Данные с сервера
+    bookList = {
+      books: [],
       loading: true,
       error: null,
     },
@@ -82,8 +83,10 @@ import { updateShoppingCart } from './shopping-cart';
     shoppingCart: {
       cartItems: [],
       orderTotal: 0,
-    };
+      };
+    }
   }
+
 */
 
 // * Основной Reducer

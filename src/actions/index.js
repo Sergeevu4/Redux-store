@@ -103,7 +103,7 @@ const fetchBooksOld = (dispatch, bookstoreService) => () => {
 // * Получения асинхронных данных через Thunk
 const fetchBooks = (bookstoreService) => (...args) => (dispatch) => {
   // Можно передать любые параметры в Thunk через компонент во время вызова
-
+  dispatch(booksRequested());
   bookstoreService
     .getBooks()
     .then((data) => dispatch(booksLoaded(data)))
